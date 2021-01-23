@@ -1,0 +1,6 @@
+rm -rf "$(SolutionDir)prepacked mods/$(TargetName)"
+mkdir -p "$(SolutionDir)prepacked mods/$(TargetName)"
+cp "$(TargetPath)" "$(SolutionDir)prepacked mods/$(ProjectName)/"
+cp "$(TargetDir)$(TargetName).pdb" "$(SolutionDir)prepacked mods/$(TargetName)/"
+cp -r "$(ProjectDir)assets" "$(SolutionDir)prepacked mods/$(TargetName)/assets/"
+cp "$(ProjectDir)modinfo.json" "$(SolutionDir)prepacked mods/$(TargetName)/"

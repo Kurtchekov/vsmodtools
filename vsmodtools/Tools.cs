@@ -400,8 +400,8 @@ namespace vsmodtools
             Directory.CreateDirectory(folder + "src");
             Directory.CreateDirectory(folder + "assets");
 
-            if (compiled)
-                File.WriteAllLines(folder + ".ignore", new string[] { "/src/" });
+            if(compiled)
+                File.Create(folder + "compiled").Dispose();
         }
 
         public virtual bool IsDLL()
@@ -437,14 +437,22 @@ namespace vsmodtools
 
             string projectID = "{" + Guid.NewGuid().ToString() + "}";
 
-            string binpathdebug = "..\\..\\bin\\Debug\\" + modid + "\\";
-            string binpathrelease = "..\\..\\bin\\Release\\" + modid + "\\";
-            string postbuild = "";
+            string binpathdebug = ".\\";
+            string binpathrelease = ".\\";
 
-            if (compiled) {
-                binpathdebug = binpathrelease = "$(ProjectDir)\\bin";
-                postbuild = "copy \"$(TargetPath)\" \"$(ProjectDir)\" " + Environment.NewLine +
-                    "copy \"$(TargetDir)\\$(TargetName).pdb\" \"$(ProjectDir)\" ";
+            string postbuild;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+                postbuild = (compiled) ?
+                    Properties.Resources.postbuildcommands_linux_compiled :
+                    Properties.Resources.postbuildcommands_linux_source;
+            } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                postbuild = (compiled) ?
+                    Properties.Resources.postbuildcommands_mac_compiled :
+                    Properties.Resources.postbuildcommands_mac_source;
+            } else {
+                postbuild = (compiled) ?
+                    Properties.Resources.postbuildcommands_windows_compiled :
+                    Properties.Resources.postbuildcommands_windows_source;
             }
 
             Dictionary<string, string> variables = new Dictionary<string, string>
@@ -628,10 +636,10 @@ namespace vsmodtools
             }
 
             string modpath = Tools.GetModPath(modid, false);
-            string ignoreFile = Path.Combine(modpath, ".ignore");
+            string compiledPath = Path.Combine(modpath, "compiled");
             if (compiled)
             {
-                if (File.Exists(ignoreFile))
+                if (File.Exists(compiledPath))
                 {
                     Console.WriteLine("Zip mod is already set to compiled.");
                     return false;
@@ -639,19 +647,19 @@ namespace vsmodtools
 
                 File.Delete(Path.Combine(modpath, modid + ".dll"));
                 File.Delete(Path.Combine(modpath, modid + ".pdb"));
-                File.WriteAllLines(ignoreFile, new string[] { "/src/" });
-                Console.WriteLine("Created ignore file.");
+                File.Create(compiledPath).Close();
+                Console.WriteLine("Created compiled flag file.");
             }
             else
             {
-                if (!File.Exists(ignoreFile))
+                if (!File.Exists(compiledPath))
                 {
                     Console.WriteLine("Zip mod is already set to source.");
                     return false;
                 }
 
-                File.Delete(ignoreFile);
-                Console.WriteLine("Deleted ignore file.");
+                File.Delete(compiledPath);
+                Console.WriteLine("Deleted compiled flag file.");
             }
 
             string[] updateArgs = new string[] { "update", modid };
@@ -815,22 +823,23 @@ namespace vsmodtools
                 { "$(projectguid)", projectID },
                 { "$(AssetFiles)", assetFiles },
                 { "$(SrcFiles)", srcFiles },
-                { "$(binpathdebug)", "..\\..\\bin\\Debug\\" + modid + "\\" },
-                { "$(binpathrelease)", "..\\..\\bin\\Release\\" + modid + "\\" },
+                { "$(binpathdebug)", ".\\" },
+                { "$(binpathrelease)", ".\\" },
                 { "$(PostBuildEvent)", "" }
             };
 
-            if (dll)
-            {
-                variables["$(binpathdebug)"] = "..\\..\\mods\\";
-                variables["$(binpathrelease)"] = "..\\..\\mods\\";
-            }
-            else if (File.Exists(folder + ".ignore"))
-            {
-                variables["$(binpathdebug)"] = "$(ProjectDir)\\bin";
-                variables["$(binpathrelease)"] = "$(ProjectDir)\\bin";
-                variables["$(PostBuildEvent)"] = "copy \"$(TargetPath)\" \"$(ProjectDir)\" " + Environment.NewLine +
-                    "copy \"$(TargetDir)\\$(TargetName).pdb\" \"$(ProjectDir)\" "; ;
+            if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+                variables["$(PostBuildEvent)"] = File.Exists(folder + "compiled")? 
+                    Properties.Resources.postbuildcommands_linux_compiled : 
+                    Properties.Resources.postbuildcommands_linux_source;
+            } else if(RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                variables["$(PostBuildEvent)"] = File.Exists(folder + "compiled") ?
+                    Properties.Resources.postbuildcommands_mac_compiled :
+                    Properties.Resources.postbuildcommands_mac_source;
+            } else {
+                variables["$(PostBuildEvent)"] = File.Exists(folder + "compiled") ?
+                    Properties.Resources.postbuildcommands_windows_compiled :
+                    Properties.Resources.postbuildcommands_windows_source;
             }
 
             string projectfile = folder + modid + ".csproj";
@@ -1088,7 +1097,7 @@ namespace vsmodtools
 
             Console.WriteLine("Creating v" + version + " ...");
 
-            bool compiled = File.Exists(modFolder + ".ignore");
+            bool compiled = File.Exists(modFolder + "compiled");
             string dllfile = Path.Combine(modFolder, modid + ".dll");
             if (compiled)
             {

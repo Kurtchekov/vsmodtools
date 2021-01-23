@@ -1,0 +1,5 @@
+rmdir /Q /S "$(SolutionDir)prepacked mods\$(TargetName)\"
+xcopy "$(TargetPath)" "$(SolutionDir)prepacked mods\$(ProjectName)\"
+xcopy "$(TargetDir)$(TargetName).pdb" "$(SolutionDir)prepacked mods\$(TargetName)\"
+xcopy /S "$(ProjectDir)assets" "$(SolutionDir)prepacked mods\$(TargetName)\assets\"
+xcopy "$(ProjectDir)modinfo.json" "$(SolutionDir)prepacked mods\$(TargetName)\"
